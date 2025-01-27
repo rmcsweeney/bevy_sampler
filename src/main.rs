@@ -83,36 +83,32 @@ fn spawn_view_model(
 
 
 fn player_move(time: Res<Time>, s: Single<&mut Transform, With<Player>>, buttons: ResMut<ButtonInput<KeyCode>>) {
-    let mut move_vec = Vec2::new(0.,0.);
-    let mut move_vert = 0.0;//transform.translation.x -
+    //World space, x z is the ground, y is up. Default facing angle is that Z is forward. 
+    // Y  Z
+    // | / 
+    // |/
+    // *------X
+
+    let mut input_vec = Vec3::new(0.,0.,0.);
     let mut transform = s.into_inner();
 
-    if buttons.pressed(KeyCode::KeyW) { move_vec.x += 1.*time.delta().as_secs_f32(); }
-    if buttons.pressed(KeyCode::KeyA) { move_vec.y -= 1.*time.delta().as_secs_f32(); }
-    if buttons.pressed(KeyCode::KeyS) { move_vec.x -= 1.*time.delta().as_secs_f32(); }
-    if buttons.pressed(KeyCode::KeyD) { move_vec.y += 1.*time.delta().as_secs_f32(); }
-    if buttons.pressed(KeyCode::Space) { move_vert += 1.*time.delta().as_secs_f32(); }
-    if buttons.pressed(KeyCode::ControlLeft) { move_vert -= 1.*time.delta().as_secs_f32(); }
-    //transform.rotation.to_euler(XY)
+    //Adding to input_vec as if in default facing. 
+    if buttons.pressed(KeyCode::KeyW)        { input_vec.z += 1.*time.delta().as_secs_f32(); }
+    if buttons.pressed(KeyCode::KeyS)        { input_vec.z -= 1.*time.delta().as_secs_f32(); }
+
+    if buttons.pressed(KeyCode::KeyD)        { input_vec.x += 1.*time.delta().as_secs_f32(); }
+    if buttons.pressed(KeyCode::KeyA)        { input_vec.x -= 1.*time.delta().as_secs_f32(); }
+
+    if buttons.pressed(KeyCode::Space)       { input_vec.y += 1.*time.delta().as_secs_f32(); }
+    if buttons.pressed(KeyCode::ControlLeft) { input_vec.y -= 1.*time.delta().as_secs_f32(); }
     
-    let f = Vec2::new(transform.forward().x, transform.forward().z).normalize();
-    println!("Rotation: {:?}", f);
-    //side mv z/x represent the horizontal component of movement in the z/x direction respectively--i.e. left input partial along the axis
-    let side_mv_z = (1.0 - f.y.abs()) * move_vec.y;
-    let side_mv_x = (1.0 - f.x.abs()) * move_vec.y;
-    println!("Side z {:?} Side x {:?}", side_mv_z, side_mv_x);
-    if f.y > 0.0 {
-        transform.translation.z += (f.y * move_vec.x - side_mv_z) * time.delta().as_secs_f32() * 1000.;
-    } else {
-        transform.translation.z += (f.y * move_vec.x + side_mv_z) * time.delta().as_secs_f32() * 1000.;
-    }
-    if f.x > 0.0 {
-        transform.translation.x += (f.x * move_vec.x + side_mv_x) * time.delta().as_secs_f32() * 1000.;
-    } else {
-        transform.translation.x += (f.x * move_vec.x - side_mv_x) * time.delta().as_secs_f32() * 1000.;
-    }
-    
-    transform.translation.y += move_vert * time.delta().as_secs_f32() * 1000.;
+    let ground_facing_vector = Vec2::new(transform.forward().x, transform.forward().z).normalize(); //Defaults to 0, -1
+    println!("Ground facing vector: {:?}", ground_facing_vector);
+
+    transform.translation.z += (ground_facing_vector.y * input_vec.z + input_vec.x * ground_facing_vector.x) * time.delta().as_secs_f32() * 1000.; // north south  
+    transform.translation.x += (ground_facing_vector.x * input_vec.z - input_vec.x * ground_facing_vector.y) * time.delta().as_secs_f32() * 1000.; // east west 
+
+    transform.translation.y += input_vec.y * time.delta().as_secs_f32() * 1000.; // Up Down, indpendent of camera
 }
 
 fn player_look(accumulated_mouse_motion: Res<AccumulatedMouseMotion>, mut player: Query<(&mut Transform, &mut CameraSensitivity), With<Player>>) {
