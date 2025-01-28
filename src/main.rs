@@ -1,11 +1,11 @@
 use std::f32::consts::FRAC_PI_2;
 
-use bevy::{input::mouse::AccumulatedMouseMotion, pbr::NotShadowCaster, prelude::*, render::{camera::RenderTarget, view::RenderLayers, Render}, utils::tracing::field::display};
+use bevy::{input::mouse::AccumulatedMouseMotion, pbr::NotShadowCaster, prelude::*, render::{camera::RenderTarget, view::RenderLayers, Render},};
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_systems(Startup, (init_world, spawn_view_model,))
+        .add_systems(Startup,(init_world, spawn_view_model, spawn_crosshair))
         .add_systems(Update, (keyboard_events, player_move, player_look))
         .run();
     println!("Hello, world!");
@@ -28,7 +28,7 @@ struct WorldModelCamera;
 
 const DEFAULT_RENDER_LAYER: usize = 0;
 const VIEW_MODEL_RENDER_LAYER: usize=1;
-const CURSOR_RENDER_LAYER: usize = 2;
+
 
 fn spawn_view_model(
     mut commands: Commands,
@@ -75,7 +75,7 @@ fn spawn_view_model(
             RenderLayers::layer(VIEW_MODEL_RENDER_LAYER),
             NotShadowCaster,
         ));
-
+        
         
 
     });
@@ -103,7 +103,6 @@ fn player_move(time: Res<Time>, s: Single<&mut Transform, With<Player>>, buttons
     if buttons.pressed(KeyCode::ControlLeft) { input_vec.y -= 1.*time.delta().as_secs_f32(); }
     
     let ground_facing_vector = Vec2::new(transform.forward().x, transform.forward().z).normalize(); //Defaults to 0, -1
-    println!("Ground facing vector: {:?}", ground_facing_vector);
 
     transform.translation.z += (ground_facing_vector.y * input_vec.z + input_vec.x * ground_facing_vector.x) * time.delta().as_secs_f32() * 1000.; // north south  
     transform.translation.x += (ground_facing_vector.x * input_vec.z - input_vec.x * ground_facing_vector.y) * time.delta().as_secs_f32() * 1000.; // east west 
@@ -137,11 +136,35 @@ fn keyboard_events(keys: Res<ButtonInput<KeyCode>>) {
     }
 }
 
+fn spawn_crosshair(mut commands: Commands, assets: Res<AssetServer<>>) {
+    let crosshair = assets.load("crosshair007.png");
+    commands
+        .spawn((
+            Node {
+                width: Val::Percent(100.),
+                height: Val::Percent(100.),
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::SpaceEvenly,
+                ..default()
+            },
+            RenderLayers::layer(2),
+        )).with_children(|parent| {
+            parent.spawn((
+                ImageNode{
+                    image: crosshair,
+                    ..default()
+                },
+            ));
+        });
+
+}
+
 fn init_world(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials: ResMut<Assets<StandardMaterial>>) {
     commands.spawn((
         Mesh3d(meshes.add(Cuboid::new(1.,1.,1.))),
         MeshMaterial3d(materials.add(Color::BLACK)),
-        Transform::from_xyz(0., 0.5, 0.),
+        Transform::from_xyz(0., 0.5, -2.),
     ));
 
 
@@ -160,10 +183,7 @@ fn init_world(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut mate
         Transform::from_xyz(5., 8., 5.)
     ));
 
-    // commands.spawn((
-    //     Camera3d::default(),
-    //     Transform::from_xyz(2., 3., -3.).looking_at(Vec3::ZERO, Vec3::Y)
-    // ));
+    
 
 }
 
